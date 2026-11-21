@@ -171,4 +171,4 @@ export default function Analisis() {
       </ul>
     </main>
   );
-}ssssss
+}
