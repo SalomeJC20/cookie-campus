@@ -261,18 +261,31 @@ export default function Home() {
   }
 
   // ---------- Ventas y ganancia ----------
-  // Suma ventas y ganancia de los pedidos aceptados desde cierta fecha en adelante
+  // Una venta cuenta el día de la ENTREGA (no el día en que se aceptó el pedido).
+  // Suma ventas y ganancia de los pedidos entregados desde cierta fecha hasta hoy.
+  // (Los que todavía no llegan a su fecha de entrega se cuentan aparte, en "por entregar".)
   function resumen(desde: string) {
-    const lista = aceptados.filter((a) => a.fecha >= desde);
+    const lista = aceptados.filter((a) => a.entrega >= desde && a.entrega <= hoy);
     return {
       pedidos: lista.length,
       ventas: lista.reduce((s, a) => s + a.cantidad * a.precio, 0),
       ganancia: lista.reduce((s, a) => s + a.cantidad * (a.precio - a.costo), 0),
     };
   }
-  const deHoy = resumen(hoy); // solo hoy
+  const deHoy = resumen(hoy); // solo las entregas de hoy
   // (mientras no sabemos qué día es hoy, no contamos nada)
   const de7 = resumen(hoy === "" ? "9999-99-99" : sumarDias(hoy, -6));
+
+  // Pedidos aceptados que todavía no se entregan (su fecha de entrega aún no llega)
+  const porEntregar = {
+    pedidos: aceptados.filter((a) => a.entrega > hoy).length,
+    ventas: aceptados
+      .filter((a) => a.entrega > hoy)
+      .reduce((s, a) => s + a.cantidad * a.precio, 0),
+    ganancia: aceptados
+      .filter((a) => a.entrega > hoy)
+      .reduce((s, a) => s + a.cantidad * (a.precio - a.costo), 0),
+  };
 
   // Para la gráfica: las ventas de cada uno de los últimos 7 días
   const ultimos7 =
@@ -281,7 +294,7 @@ export default function Home() {
       : [-6, -5, -4, -3, -2, -1, 0].map((n) => {
           const fecha = sumarDias(hoy, n);
           const total = aceptados
-            .filter((a) => a.fecha === fecha)
+            .filter((a) => a.entrega === fecha) // cada venta va en su día de entrega
             .reduce((s, a) => s + a.cantidad * a.precio, 0);
           // La inicial del día de la semana (L, M, M, J, V, S, D)
           const letra = new Date(fecha + "T00:00:00")
@@ -435,6 +448,14 @@ export default function Home() {
                 <p className="text-sm text-[#8A7262] mt-2">
                   Últimos 7 días: <b className="text-[#4A3125]">{pesos(de7.ventas)}</b> vendidos
                 </p>
+                {/* Lo que ya se aceptó pero todavía no se entrega */}
+                {porEntregar.pedidos > 0 && (
+                  <p className="text-sm text-[#8A7262] mt-1">
+                    Por entregar: <b className="text-[#4A3125]">{pesos(porEntregar.ventas)}</b> (
+                    {porEntregar.pedidos} {porEntregar.pedidos === 1 ? "pedido" : "pedidos"}, ganancia{" "}
+                    {pesos(porEntregar.ganancia)})
+                  </p>
+                )}
               </section>
 
               {/* Tres datos rápidos */}
@@ -664,6 +685,11 @@ export default function Home() {
                     <p className="text-sm text-[#5E8456]">Ganancia {pesos(de7.ganancia)}</p>
                   </div>
                 </div>
+                {porEntregar.pedidos > 0 && (
+                  <p className="text-sm text-[#8A7262] mt-3 text-center">
+                    Por entregar: {pesos(porEntregar.ventas)} · ganancia {pesos(porEntregar.ganancia)}
+                  </p>
+                )}
               </section>
 
               <button className="text-red-600 underline mb-4" onClick={borrarTodo}>
